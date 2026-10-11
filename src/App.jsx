@@ -1,22 +1,20 @@
+import { useState } from 'react';
+import Navbar from './components/Navbar/Navbar';
+import AppointmentBoard from './features/appointments/AppointmentBoard';
+import ClientList from './features/clients/ClientList';
+import AppShell from './layouts/AppShell';
 
-function App() {
+export default function App() {
+  const [activeTab, setActiveTab] = useState('appointments');
+
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-lg p-10 text-center">
-        <h1 className="text-3xl font-bold text-blue-600 mb-4">
-          Epilink
-        </h1>
+    <AppShell>
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-        <p className="text-gray-600 mb-6">
-          React + Tailwind CSS עובדים!
-        </p>
-
-        <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg">
-          זה עובד!
-        </button>
-      </div>
-    </div>
-  )
+      <main className="p-6">
+        {activeTab === 'appointments' && <AppointmentBoard />}
+        {activeTab === 'clients' && <ClientList />}
+      </main>
+    </AppShell>
+  );
 }
-
-export default App
