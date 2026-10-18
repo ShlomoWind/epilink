@@ -1,56 +1,47 @@
-import { Calendar, Users, LogIn } from 'lucide-react';
-import {
-  NavContainer,
-  Logo,
-  LogoImage,
-  NavTabs,
-  TabButton,
-  UserSection,
-  LoginButton,
-  LogoutButton,
-  UserEmail,
-} from './Navbar.styles';
+import BrandLogo from './BrandLogo';
+import NavigationTabs from './NavigationTabs';
+import AuthStatusMessage from './AuthStatusMessage';
+import GoogleLoginButton from '../../features/auth/components/GoogleLoginButton';
+import LogoutButton from '../../features/auth/components/LogoutButton';
+import UserProfile from '../../features/auth/components/UserProfile';
+import { NavContainer, UserSection } from './Navbar.styles';
 
-export default function Navbar({ activeTab, setActiveTab, user, onLogin, onLogout }) {
+export default function Navbar({
+  activeTab,
+  setActiveTab,
+  user,
+  googleIdentity,
+  isAuthLoading,
+  isSubmitting,
+  authError,
+  onLogin,
+  onLogout,
+}) {
   return (
-    <NavContainer>
-      <Logo>
-        <LogoImage src="/epilink-logo.jpg" alt="לוגו Epilink" />
-      </Logo>
+    <>
+      <NavContainer>
+        <BrandLogo />
+        <NavigationTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
-      <NavTabs>
-        <TabButton
-          $active={activeTab === 'appointments'}
-          onClick={() => setActiveTab?.('appointments')}
-          type="button"
-        >
-          <Calendar size={18} />
-          לוח תורים
-        </TabButton>
-
-        <TabButton
-          $active={activeTab === 'clients'}
-          onClick={() => setActiveTab?.('clients')}
-          type="button"
-        >
-          <Users size={18} />
-          רשימת לקוחות
-        </TabButton>
-      </NavTabs>
-
-      <UserSection>
-        {user ? (
-          <>
-            <UserEmail>{user.email}</UserEmail>
-            <LogoutButton onClick={onLogout} type="button">התנתק</LogoutButton>
-          </>
-        ) : (
-          <LoginButton onClick={onLogin} type="button">
-            <LogIn size={18} />
-            התחבר עם Google
-          </LoginButton>
-        )}
-      </UserSection>
-    </NavContainer>
+        <UserSection>
+          {user ? (
+            <>
+              <UserProfile user={user} googleIdentity={googleIdentity} />
+              <LogoutButton disabled={isSubmitting} onLogout={onLogout} />
+            </>
+          ) : (
+            <GoogleLoginButton
+              isLoading={isAuthLoading}
+              isSubmitting={isSubmitting}
+              onLogin={onLogin}
+            />
+          )}
+        </UserSection>
+      </NavContainer>
+      <AuthStatusMessage>{authError}</AuthStatusMessage>
+    </>
   );
 }
