@@ -14,13 +14,11 @@ export async function getAppointments() {
       actual_duration,
       calculated_price,
       status,
-      notes,
       created_at,
       clients (
         id,
         full_name,
-        phone,
-        default_price_per_hour
+        phone
       )
     `)
     .order('appointment_date', { ascending: true });
@@ -34,10 +32,10 @@ export async function getAppointments() {
 
 /**
  * משימה 15: הוספת תור חדש
- * @param {Object} appointmentData - { client_id, appointment_date, estimated_duration, notes }
+ * @param {Object} appointmentData - { client_id, appointment_date, estimated_duration }
  */
 export async function createAppointment(appointmentData) {
-  const { client_id, appointment_date, estimated_duration = 30, notes = '' } = appointmentData;
+  const { client_id, appointment_date, estimated_duration = 30 } = appointmentData;
 
   const { data, error } = await supabase
     .from('appointments')
@@ -46,8 +44,7 @@ export async function createAppointment(appointmentData) {
         client_id,
         appointment_date,
         estimated_duration,
-        notes,
-        status: 'scheduled'
+        status: 'scheduled',
       }
     ])
     .select(`
@@ -71,27 +68,10 @@ export async function createAppointment(appointmentData) {
  * משימה 17: סיום טיפול וחישוב מחיר
  * @param {string} id - מזהה התור
  * @param {number} actual_duration - משך הטיפול בדקות
- * @param {number} [price_per_hour] - תעריף שעתי (אם לא סופק, נלקח מפרטי הלקוח או ברירת מחדל של 150)
+ * @param {number} [hourlyRate=150] - תעריף לשעה (ברירת מחדל: 150 ש"ח)
  */
-export async function completeAppointment(id, actual_duration, price_per_hour = null) {
-  let hourlyRate = price_per_hour;
-
-  // אם לא סופק תעריף, שולפים את הגדרת הלקוח
-  if (!hourlyRate) {
-    const { data: appointment, error: fetchError } = await supabase
-      .from('appointments')
-      .select('clients(default_price_per_hour)')
-      .eq('id', id)
-      .single();
-
-    if (!fetchError && appointment?.clients?.default_price_per_hour) {
-      hourlyRate = appointment.clients.default_price_per_hour;
-    } else {
-      hourlyRate = 150; // ברירת מחדל
-    }
-  }
-
-  // חישוב מחיר יחסי לפי דקות: (משך בדקות / 60) * תעריף לשעה
+export async function completeAppointment(id, actual_duration, hourlyRate = 150) {
+  // חישוב מחיר יחסי: (משך בדקות / 60) * תעריף לשעה
   const calculated_price = Math.round((actual_duration / 60) * hourlyRate);
 
   const { data, error } = await supabase
@@ -99,7 +79,7 @@ export async function completeAppointment(id, actual_duration, price_per_hour = 
     .update({
       actual_duration,
       calculated_price,
-      status: 'completed'
+      status: 'completed',
     })
     .eq('id', id)
     .select(`
