@@ -1,7 +1,7 @@
 import { supabase } from '../../supabaseClient';
 
 /**
- * משימה 14: שליפת כל התורים כולל פרטי הלקוח
+ * שליפת כל התורים כולל פרטי הלקוח
  */
 export async function getAppointments() {
   const { data, error } = await supabase
@@ -31,7 +31,7 @@ export async function getAppointments() {
 }
 
 /**
- * משימה 15: הוספת תור חדש
+ * הוספת תור חדש
  * @param {Object} appointmentData - { client_id, appointment_date, estimated_duration }
  */
 export async function createAppointment(appointmentData) {
@@ -65,7 +65,7 @@ export async function createAppointment(appointmentData) {
 }
 
 /**
- * משימה 17: סיום טיפול וחישוב מחיר
+ * סיום טיפול וחישוב מחיר
  * @param {string} id - מזהה התור
  * @param {number} actual_duration - משך הטיפול בדקות
  * @param {number} [hourlyRate=150] - תעריף לשעה (ברירת מחדל: 150 ש"ח)
