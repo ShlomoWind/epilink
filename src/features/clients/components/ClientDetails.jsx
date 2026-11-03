@@ -1,4 +1,35 @@
 import { formatCurrency, formatDate } from '../../../utils/formatters';
+import styled from 'styled-components';
+
+const DetailsGrid = styled.dl`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+const Detail = styled.div`
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+`;
+
+const DetailLabel = styled.dt`
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 500;
+`;
+
+const DetailValue = styled.dd`
+  overflow-wrap: break-word;
+  margin: 0.25rem 0 0;
+  color: #111827;
+  font-weight: 500;
+`;
 
 const JOIN_DATE_FORMAT = {
   day: 'numeric',
@@ -8,7 +39,7 @@ const JOIN_DATE_FORMAT = {
 
 export default function ClientDetails({ client }) {
   return (
-    <dl className="grid gap-4 sm:grid-cols-2">
+    <DetailsGrid>
       <ClientDetail label="שם מלא" value={client.full_name} />
       <ClientDetail label="מספר טלפון" value={client.phone} dir="ltr" />
       <ClientDetail
@@ -25,17 +56,17 @@ export default function ClientDetails({ client }) {
         label="תאריך הצטרפות"
         value={formatDate(client.created_at, JOIN_DATE_FORMAT)}
       />
-    </dl>
+    </DetailsGrid>
   );
 }
 
 function ClientDetail({ dir, label, value }) {
   return (
-    <div className="min-w-0 rounded-xl bg-gray-50 px-4 py-3">
-      <dt className="text-xs font-medium text-gray-500">{label}</dt>
-      <dd className="mt-1 break-words font-medium text-gray-900" dir={dir}>
+    <Detail>
+      <DetailLabel>{label}</DetailLabel>
+      <DetailValue dir={dir}>
         {value}
-      </dd>
-    </div>
+      </DetailValue>
+    </Detail>
   );
 }

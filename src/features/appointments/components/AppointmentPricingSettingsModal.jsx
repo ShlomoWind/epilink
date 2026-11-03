@@ -1,5 +1,21 @@
 import FeedbackMessage from '../../../components/ui/FeedbackMessage';
 import Modal from '../../../components/ui/Modal';
+import {
+  Button,
+  ButtonRow,
+  FieldInput,
+  FieldLabel,
+  FieldTitle,
+  FormStack,
+  MutedText,
+} from '../../../components/ui/Primitives.styles';
+import styled from 'styled-components';
+
+const SettingsNote = styled(MutedText)`
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+`;
 
 export default function AppointmentPricingSettingsModal({
   price,
@@ -15,19 +31,18 @@ export default function AppointmentPricingSettingsModal({
       title="הגדרות תמחור"
     >
       {error && (
-        <div className="mb-4">
+        <div>
           <FeedbackMessage>{error}</FeedbackMessage>
         </div>
       )}
 
-      <form className="space-y-5" onSubmit={onSubmit}>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-gray-700">
+      <FormStack $gap="1.25rem" onSubmit={onSubmit}>
+        <FieldLabel>
+          <FieldTitle>
             מחיר ברירת מחדל לדקה (₪)
-          </span>
-          <input
+          </FieldTitle>
+          <FieldInput
             autoFocus
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
             min="0.01"
             onChange={(event) => onPriceChange(event.target.value)}
             required
@@ -35,29 +50,30 @@ export default function AppointmentPricingSettingsModal({
             type="number"
             value={price}
           />
-        </label>
+        </FieldLabel>
 
-        <p className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+        <SettingsNote>
           ההגדרה נשמרת בדפדפן הזה בלבד. ניתן להזין תעריף שונה לטיפול יחיד בזמן
           סיומו.
-        </p>
+        </SettingsNote>
 
-        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row">
-          <button
-            className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50"
+        <ButtonRow $paddingTop="0.25rem">
+          <Button
+            $variant="secondary"
+            $grow
             onClick={onClose}
             type="button"
           >
             ביטול
-          </button>
-          <button
-            className="flex-1 rounded-xl bg-violet-700 px-4 py-3 font-semibold text-white transition hover:bg-violet-800"
+          </Button>
+          <Button
+            $grow
             type="submit"
           >
             שמירת הגדרה
-          </button>
-        </div>
-      </form>
+          </Button>
+        </ButtonRow>
+      </FormStack>
     </Modal>
   );
 }

@@ -1,6 +1,13 @@
 import FeedbackMessage from '../../../components/ui/FeedbackMessage';
 import Modal from '../../../components/ui/Modal';
+import { Button, ButtonRow } from '../../../components/ui/Primitives.styles';
 import { formatDate } from '../../../utils/formatters';
+import styled from 'styled-components';
+
+const DeleteDescription = styled.p`
+  margin: 0 0 1.25rem;
+  color: #374151;
+`;
 
 export default function AppointmentDeleteModal({
   appointment,
@@ -16,12 +23,12 @@ export default function AppointmentDeleteModal({
       title="מחיקת תור"
     >
       {error && (
-        <div className="mb-4">
+        <div>
           <FeedbackMessage>{error}</FeedbackMessage>
         </div>
       )}
 
-      <p className="mb-5 text-gray-700">
+      <DeleteDescription>
         למחוק את התור של{' '}
         <strong>{appointment.clients?.full_name || 'הלקוחה'}</strong> בתאריך{' '}
         <strong>
@@ -37,26 +44,28 @@ export default function AppointmentDeleteModal({
           })}
         </strong>
         ?
-      </p>
+      </DeleteDescription>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row">
-        <button
-          className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+      <ButtonRow $paddingTop="0">
+        <Button
+          $variant="secondary"
+          $grow
           disabled={isDeleting}
           onClick={onClose}
           type="button"
         >
           ביטול
-        </button>
-        <button
-          className="flex-1 rounded-xl bg-red-700 px-4 py-3 font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+        </Button>
+        <Button
+          $variant="danger"
+          $grow
           disabled={isDeleting}
           onClick={onConfirm}
           type="button"
         >
           {isDeleting ? 'מוחק...' : 'מחיקת תור'}
-        </button>
-      </div>
+        </Button>
+      </ButtonRow>
     </Modal>
   );
 }

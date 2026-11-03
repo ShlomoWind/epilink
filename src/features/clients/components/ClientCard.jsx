@@ -7,6 +7,124 @@ import {
   UserRound,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
+import styled from 'styled-components';
+
+const CardButton = styled.button`
+  width: 100%;
+  padding: 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  text-align: right;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: #c4b5fd;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+  }
+`;
+
+const CardHeader = styled.span`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+`;
+
+const Identity = styled.span`
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const Avatar = styled.span`
+  display: flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #ede9fe;
+  color: #6d28d9;
+`;
+
+const ClientName = styled.span`
+  overflow: hidden;
+  color: #111827;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const DetailsLink = styled.span`
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  ${CardButton}:hover &,
+  ${CardButton}:focus-visible & {
+    opacity: 1;
+  }
+`;
+
+const CardDetails = styled.span`
+  display: block;
+  margin-top: 1.25rem;
+  color: #4b5563;
+  font-size: 0.875rem;
+
+  > span {
+    display: flex;
+    min-height: 1.25rem;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+`;
+
+const Phone = styled.span`
+  display: block !important;
+  text-align: left;
+`;
+
+const DetailIcon = styled.span`
+  display: flex;
+  flex: 0 0 auto;
+  color: #9ca3af;
+`;
+
+const DetailValue = styled.span`
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const JoinedDate = styled.span`
+  display: block;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+  color: #6b7280;
+  font-size: 0.75rem;
+`;
 
 const JOIN_DATE_FORMAT = {
   day: 'numeric',
@@ -28,70 +146,57 @@ function ClientCard({
   onSelect,
 }) {
   return (
-    <button
-      className="group rounded-2xl border border-gray-200 bg-white p-5 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+    <CardButton
       key={client.id}
       onClick={() => onSelect(client)}
       type="button"
     >
-      <span className="flex items-start justify-between gap-3">
-        <span className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+      <CardHeader>
+        <Identity>
+          <Avatar>
             <UserRound aria-hidden="true" size={21} />
-          </span>
-          <span className="truncate text-lg font-semibold text-gray-900">
+          </Avatar>
+          <ClientName>
             {client.full_name}
-          </span>
-        </span>
-        <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 opacity-0 transition group-hover:opacity-100 group-focus:opacity-100">
+          </ClientName>
+        </Identity>
+        <DetailsLink>
           פרטים
-        </span>
-      </span>
+        </DetailsLink>
+      </CardHeader>
 
-      <span className="mt-5 block space-y-3 text-sm text-gray-600">
-        <span className="block text-left" dir="ltr">
+      <CardDetails>
+        <Phone dir="ltr">
           {client.phone}
-        </span>
-        <span className="flex min-h-5 items-center gap-2">
-          <Mail aria-hidden="true" className="shrink-0 text-gray-400" size={16} />
-          <span className="truncate" dir="ltr">
+        </Phone>
+        <span>
+          <DetailIcon><Mail aria-hidden="true" size={16} /></DetailIcon>
+          <DetailValue dir="ltr">
             {client.email || 'לא הוזן אימייל'}
-          </span>
+          </DetailValue>
         </span>
-        <span className="flex min-h-5 items-center gap-2">
-          <Scissors
-            aria-hidden="true"
-            className="shrink-0 text-gray-400"
-            size={16}
-          />
-          <span>{client.needle_type || 'לא הוזן סוג מחט'}</span>
+        <span>
+          <DetailIcon><Scissors aria-hidden="true" size={16} /></DetailIcon>
+          <DetailValue>{client.needle_type || 'לא הוזן סוג מחט'}</DetailValue>
         </span>
-        <span className="flex min-h-5 items-center gap-2">
-          <CircleDollarSign
-            aria-hidden="true"
-            className="shrink-0 text-gray-400"
-            size={16}
-          />
-          <span>חוב: {formatCurrency(client.outstanding_balance)} ₪</span>
+        <span>
+          <DetailIcon><CircleDollarSign aria-hidden="true" size={16} /></DetailIcon>
+          <DetailValue>חוב: {formatCurrency(client.outstanding_balance)} ₪</DetailValue>
         </span>
-        <span className="flex min-h-5 items-center gap-2">
-          <CalendarDays
-            aria-hidden="true"
-            className="shrink-0 text-gray-400"
-            size={16}
-          />
-          <span>
+        <span>
+          <DetailIcon><CalendarDays aria-hidden="true" size={16} /></DetailIcon>
+          <DetailValue>
             {nextAppointment
               ? `התור הבא: ${formatDate(nextAppointment, APPOINTMENT_DATE_FORMAT)}`
               : 'אין תור קרוב שנקבע'}
-          </span>
+          </DetailValue>
         </span>
-      </span>
+      </CardDetails>
 
-      <span className="mt-4 block border-t border-gray-100 pt-3 text-xs text-gray-500">
+      <JoinedDate>
         הצטרפות: {formatDate(client.created_at, JOIN_DATE_FORMAT)}
-      </span>
-    </button>
+      </JoinedDate>
+    </CardButton>
   );
 }
 

@@ -1,7 +1,14 @@
+import styled from 'styled-components';
+
+const Shell = styled.div`
+  min-height: 100vh;
+  background: #f9fafb;
+`;
+
 export default function AppShell({ children }) {
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <Shell dir="rtl">
       {children}
-    </div>
+    </Shell>
   );
 }

@@ -1,6 +1,43 @@
 import FeedbackMessage from '../../../components/ui/FeedbackMessage';
 import Modal from '../../../components/ui/Modal';
+import {
+  Button,
+  ButtonRow,
+  FieldInput,
+  FieldLabel,
+  FieldTitle,
+  FormStack,
+} from '../../../components/ui/Primitives.styles';
 import { formatCurrency } from '../../../utils/formatters';
+import styled from 'styled-components';
+
+const PriceEstimate = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #f5f3ff;
+`;
+
+const PriceEstimateTitle = styled.p`
+  margin: 0;
+  color: #5b21b6;
+  font-size: 0.875rem;
+`;
+
+const PriceEstimateCalculation = styled.p`
+  margin: 0.25rem 0 0;
+  color: #7c3aed;
+  font-size: 0.75rem;
+`;
+
+const PriceEstimateValue = styled.p`
+  margin: 0;
+  color: #4c1d95;
+  font-size: 1.5rem;
+  font-weight: 700;
+`;
 
 export default function AppointmentCompletionModal({
   appointment,
@@ -21,33 +58,31 @@ export default function AppointmentCompletionModal({
       title="סיום טיפול"
     >
       {error && (
-        <div className="mb-4">
+        <div>
           <FeedbackMessage>{error}</FeedbackMessage>
         </div>
       )}
 
-      <form className="space-y-5" onSubmit={onSubmit}>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-gray-700">
+      <FormStack $gap="1.25rem" onSubmit={onSubmit}>
+        <FieldLabel>
+          <FieldTitle>
             משך הטיפול בפועל (בדקות)
-          </span>
-          <input
+          </FieldTitle>
+          <FieldInput
             autoFocus
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
             min="1"
             onChange={(event) => onDurationChange(event.target.value)}
             required
             type="number"
             value={actualDuration}
           />
-        </label>
+        </FieldLabel>
 
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-gray-700">
+        <FieldLabel>
+          <FieldTitle>
             מחיר לדקה עבור טיפול זה (₪)
-          </span>
-          <input
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+          </FieldTitle>
+          <FieldInput
             min="0.01"
             onChange={(event) => onPriceChange(event.target.value)}
             required
@@ -55,44 +90,45 @@ export default function AppointmentCompletionModal({
             type="number"
             value={pricePerMinute}
           />
-        </label>
+        </FieldLabel>
 
-        <div
+        <PriceEstimate
           aria-live="polite"
-          className="flex items-center justify-between rounded-xl bg-violet-50 px-4 py-4"
         >
           <div>
-            <p className="text-sm text-violet-800">מחיר משוער</p>
-            <p className="mt-1 text-xs text-violet-600">
+            <PriceEstimateTitle>מחיר משוער</PriceEstimateTitle>
+            <PriceEstimateCalculation>
               {actualDuration || '0'} דקות ×{' '}
               {formatCurrency(Number(pricePerMinute))} לדקה
-            </p>
+            </PriceEstimateCalculation>
           </div>
-          <p className="text-2xl font-bold text-violet-900">
+          <PriceEstimateValue>
             {calculatedPrice == null
               ? '—'
               : `${formatCurrency(calculatedPrice)} ₪`}
-          </p>
-        </div>
+          </PriceEstimateValue>
+        </PriceEstimate>
 
-        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row">
-          <button
-            className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+        <ButtonRow $paddingTop="0.25rem">
+          <Button
+            $variant="secondary"
+            $grow
             disabled={isCompleting}
             onClick={onClose}
             type="button"
           >
             ביטול
-          </button>
-          <button
-            className="flex-1 rounded-xl bg-emerald-700 px-4 py-3 font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+          </Button>
+          <Button
+            $variant="success"
+            $grow
             disabled={isCompleting}
             type="submit"
           >
             {isCompleting ? 'שומר...' : 'אישור סיום טיפול'}
-          </button>
-        </div>
-      </form>
+          </Button>
+        </ButtonRow>
+      </FormStack>
     </Modal>
   );
 }

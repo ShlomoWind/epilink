@@ -1,7 +1,68 @@
 import { memo } from 'react';
 import { CalendarDays, Clock3 } from 'lucide-react';
 import { formatDate, getLocalDateKey } from '../../../utils/formatters';
+import styled from 'styled-components';
 import AppointmentCard from './AppointmentCard';
+
+const GroupSection = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const GroupHeading = styled.h2`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: #111827;
+  font-size: 1.25rem;
+  font-weight: 700;
+`;
+
+const VioletIcon = styled(CalendarDays)`
+  color: #6d28d9;
+`;
+
+const AppointmentCount = styled.span`
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.875rem;
+  font-weight: 500;
+`;
+
+const EmptyAppointments = styled.div`
+  padding: 2.5rem 1.5rem;
+  border: 1px dashed #d1d5db;
+  border-radius: 1rem;
+  background: #ffffff;
+  color: #6b7280;
+  text-align: center;
+`;
+
+const GroupedAppointments = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+`;
+
+const DateGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+
+const DateHeading = styled.h3`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 600;
+`;
 
 const DATE_FORMAT = {
   weekday: 'long',
@@ -26,31 +87,31 @@ function AppointmentGroup({
   }, new Map());
 
   return (
-    <section className="space-y-4">
-      <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-        <CalendarDays aria-hidden="true" className="text-violet-700" size={21} />
+    <GroupSection>
+      <GroupHeading>
+        <VioletIcon aria-hidden="true" size={21} />
         {heading}
-        <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-600">
+        <AppointmentCount>
           {appointments.length}
-        </span>
-      </h2>
+        </AppointmentCount>
+      </GroupHeading>
 
       {appointments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-500">
+        <EmptyAppointments>
           {emptyMessage}
-        </div>
+        </EmptyAppointments>
       ) : (
-        <div className="space-y-5">
+        <GroupedAppointments>
           {[...groupedAppointments.entries()].map(
             ([dateKey, dateAppointments]) => (
-              <div className="space-y-3" key={dateKey}>
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500">
+              <DateGroup key={dateKey}>
+                <DateHeading>
                   <Clock3 aria-hidden="true" size={16} />
                   {formatDate(
                     dateAppointments[0].appointment_date,
                     DATE_FORMAT,
                   )}
-                </h3>
+                </DateHeading>
                 {dateAppointments.map((appointment) => (
                   <AppointmentCard
                     appointment={appointment}
@@ -60,12 +121,12 @@ function AppointmentGroup({
                     onEdit={onEdit}
                   />
                 ))}
-              </div>
+              </DateGroup>
             ),
           )}
-        </div>
+        </GroupedAppointments>
       )}
-    </section>
+    </GroupSection>
   );
 }
 

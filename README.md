@@ -1,6 +1,8 @@
 # epilink
 Epilink - Hair removal appointment and management system
 
+The UI is built with React JSX and styled-components. Tailwind CSS and utility-class styling are not used.
+
 ## Project structure
 
 - `src/App.jsx` composes the authenticated application and its active feature.

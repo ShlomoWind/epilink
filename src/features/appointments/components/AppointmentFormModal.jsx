@@ -1,9 +1,16 @@
 import FeedbackMessage from '../../../components/ui/FeedbackMessage';
 import Modal from '../../../components/ui/Modal';
+import {
+  Button,
+  ButtonRow,
+  FieldHint,
+  FieldInput,
+  FieldLabel,
+  FieldSelect,
+  FieldTitle,
+  FormStack,
+} from '../../../components/ui/Primitives.styles';
 import { getDefaultAppointmentDateTime } from '../utils/appointmentDateTime';
-
-const fieldClassName =
-  'w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100';
 
 export default function AppointmentFormModal({
   appointment,
@@ -34,32 +41,31 @@ export default function AppointmentFormModal({
       title={isEditing ? 'עריכת תור' : 'קביעת תור חדש'}
     >
       {error && (
-        <div className="mb-4">
+        <div>
           <FeedbackMessage>{error}</FeedbackMessage>
         </div>
       )}
 
       {clients.length === 0 && !isEditing ? (
-        <div className="space-y-4">
+        <FormStack as="div">
           <FeedbackMessage>
             כדי לקבוע תור, יש להוסיף קודם לקוח לרשימה.
           </FeedbackMessage>
           <button
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50"
+            $variant="secondary"
             onClick={onClose}
             type="button"
           >
             סגירה
           </button>
-        </div>
+        </FormStack>
       ) : (
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-gray-700">
+        <FormStack onSubmit={onSubmit}>
+          <FieldLabel>
+            <FieldTitle>
               {isEditing ? 'לקוחה' : 'לקוח/ה'}
-            </span>
-            <select
-              className={fieldClassName}
+            </FieldTitle>
+            <FieldSelect
               onChange={(event) => onClientChange(event.target.value)}
               required
               value={selectedClientId}
@@ -69,76 +75,74 @@ export default function AppointmentFormModal({
                   {client.full_name} · {client.phone}
                 </option>
               ))}
-            </select>
-          </label>
+            </FieldSelect>
+          </FieldLabel>
 
           {isEditing && (
-            <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-gray-700">
+            <FieldLabel>
+              <FieldTitle>
                 סטטוס התור
-              </span>
-              <select
-                className={fieldClassName}
+              </FieldTitle>
+              <FieldSelect
                 onChange={(event) => onStatusChange(event.target.value)}
                 value={appointmentStatus}
               >
                 <option value="scheduled">נקבע</option>
                 <option value="completed">בוצע</option>
-              </select>
+              </FieldSelect>
               {appointmentStatus === 'completed' &&
                 appointment.status !== 'completed' && (
-                  <span className="block text-xs leading-5 text-gray-500">
+                  <FieldHint>
                     בשמירה נבקש להזין את משך הטיפול והמחיר כדי להשלים את התור.
-                  </span>
+                  </FieldHint>
                 )}
               {appointmentStatus === 'scheduled' &&
                 appointment.status === 'completed' && (
-                  <span className="block text-xs leading-5 text-amber-700">
+                  <FieldHint>
                     החזרת התור ל״נקבע״ תסיר את משך הטיפול והמחיר שנשמרו.
-                  </span>
+                  </FieldHint>
                 )}
-            </label>
+            </FieldLabel>
           )}
 
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-gray-700">
+          <FieldLabel>
+            <FieldTitle>
               תאריך ושעה
-            </span>
-            <input
-              className={fieldClassName}
+            </FieldTitle>
+            <FieldInput
               min={isEditing ? undefined : getDefaultAppointmentDateTime()}
               onChange={(event) => onDateChange(event.target.value)}
               required
               type="datetime-local"
               value={appointmentDate}
             />
-          </label>
+          </FieldLabel>
 
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-gray-700">
+          <FieldLabel>
+            <FieldTitle>
               משך משוער (בדקות)
-            </span>
-            <input
-              className={fieldClassName}
+            </FieldTitle>
+            <FieldInput
               min="1"
               onChange={(event) => onDurationChange(event.target.value)}
               required
               type="number"
               value={estimatedDuration}
             />
-          </label>
+          </FieldLabel>
 
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
-            <button
-              className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+          <ButtonRow>
+            <Button
+              $variant="secondary"
+              $grow
               disabled={isSaving}
               onClick={onClose}
               type="button"
             >
               ביטול
-            </button>
-            <button
-              className="flex-1 rounded-xl bg-violet-700 px-4 py-3 font-semibold text-white transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60"
+            </Button>
+            <Button
+              $grow
               disabled={isSaving}
               type="submit"
             >
@@ -147,9 +151,9 @@ export default function AppointmentFormModal({
                 : isEditing
                   ? 'שמירת שינויים'
                   : 'שמירת תור'}
-            </button>
-          </div>
-        </form>
+            </Button>
+          </ButtonRow>
+        </FormStack>
       )}
     </Modal>
   );
