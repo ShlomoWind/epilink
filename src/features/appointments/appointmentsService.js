@@ -64,15 +64,107 @@ export async function createAppointment(appointmentData) {
   return data;
 }
 
+export async function updateAppointment(
+  id,
+  { client_id, appointment_date, estimated_duration, status = 'scheduled' },
+) {
+  if (typeof id !== 'string' || !id.trim()) {
+    throw new Error('מזהה התור אינו תקין.');
+  }
+
+  if (typeof client_id !== 'string' || !client_id.trim()) {
+    throw new Error('יש לבחור לקוחה לתור.');
+  }
+
+  if (
+    typeof appointment_date !== 'string' ||
+    Number.isNaN(new Date(appointment_date).getTime())
+  ) {
+    throw new Error('יש לבחור מועד תקין לתור.');
+  }
+
+  if (!Number.isInteger(estimated_duration) || estimated_duration <= 0) {
+    throw new Error('משך התור חייב להיות מספר חיובי של דקות שלמות.');
+  }
+
+  if (status !== 'scheduled' && status !== 'completed') {
+    throw new Error('סטטוס התור אינו תקין.');
+  }
+
+  const updates = {
+    client_id,
+    appointment_date,
+    estimated_duration,
+    status,
+  };
+
+  if (status === 'scheduled') {
+    updates.actual_duration = null;
+    updates.calculated_price = null;
+  }
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .update(updates)
+    .eq('id', id)
+    .select(`
+      *,
+      clients (
+        id,
+        full_name,
+        phone
+      )
+    `)
+    .single();
+
+  if (error) {
+    throw new Error(`שגיאה בעדכון התור: ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function deleteAppointment(id) {
+  if (typeof id !== 'string' || !id.trim()) {
+    throw new Error('מזהה התור אינו תקין.');
+  }
+
+  const { error } = await supabase
+    .from('appointments')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(`שגיאה במחיקת התור: ${error.message}`);
+  }
+}
+
 /**
  * סיום טיפול וחישוב מחיר
  * @param {string} id - מזהה התור
  * @param {number} actual_duration - משך הטיפול בדקות
- * @param {number} [hourlyRate=150] - תעריף לשעה (ברירת מחדל: 150 ש"ח)
+ * @param {number} [pricePerMinute=2.5] - תעריף בדקות בשקלים
  */
-export async function completeAppointment(id, actual_duration, hourlyRate = 150) {
-  // חישוב מחיר יחסי: (משך בדקות / 60) * תעריף לשעה
-  const calculated_price = Math.round((actual_duration / 60) * hourlyRate);
+export async function completeAppointment(
+  id,
+  actual_duration,
+  pricePerMinute = 2.5,
+) {
+  if (!id || typeof id !== 'string') {
+    throw new Error('מזהה התור אינו תקין.');
+  }
+
+  if (!Number.isInteger(actual_duration) || actual_duration <= 0) {
+    throw new Error('משך הטיפול חייב להיות מספר חיובי של דקות שלמות.');
+  }
+
+  if (!Number.isFinite(pricePerMinute) || pricePerMinute <= 0) {
+    throw new Error('המחיר לדקה חייב להיות מספר חיובי.');
+  }
+
+  const calculated_price = Number(
+    (actual_duration * pricePerMinute).toFixed(2),
+  );
 
   const { data, error } = await supabase
     .from('appointments')

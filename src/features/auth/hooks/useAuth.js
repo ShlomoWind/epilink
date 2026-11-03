@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
+import { clearResourceCache } from '../../../utils/resourceCache';
 import { fetchGoogleIdentity } from '../services/googleIdentityService';
 import {
   getAuthErrorMessage,
@@ -20,6 +21,11 @@ export function useAuth() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUser = event === 'SIGNED_OUT' ? null : (session?.user ?? null);
+
+      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+        clearResourceCache();
+      }
+
       setUser(nextUser);
 
       if (event === 'SIGNED_OUT') {
