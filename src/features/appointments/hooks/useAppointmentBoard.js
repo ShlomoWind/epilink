@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useCachedResource } from '../../../hooks/useCachedResource';
 import {
+  buildClinicResourceKey,
   invalidateResource,
   updateCachedResource,
 } from '../../../utils/resourceCache';
 import {
   completeAppointment,
   createAppointment,
+  correctCompletedAppointment,
   deleteAppointment,
   getAppointments,
   updateAppointment,
@@ -14,7 +16,7 @@ import {
 import { getClients } from '../../clients/clientsService';
 import {
   DEFAULT_PRICE_PER_MINUTE,
-  PRICE_PER_MINUTE_STORAGE_KEY,
+  getPricePerMinuteStorageKey,
 } from '../constants/pricing';
 import {
   getDefaultAppointmentDateTime,
@@ -25,10 +27,10 @@ import { formatCurrency, getLocalDateKey } from '../../../utils/formatters';
 const EMPTY_APPOINTMENTS = [];
 const EMPTY_CLIENTS = [];
 
-function readPricePerMinuteSetting() {
+function readPricePerMinuteSetting(clinicId) {
   try {
     const storedRate = window.localStorage.getItem(
-      PRICE_PER_MINUTE_STORAGE_KEY,
+      getPricePerMinuteStorageKey(clinicId),
     );
 
     if (storedRate === null) {
@@ -58,14 +60,21 @@ function sortByAppointmentDate(appointments) {
   );
 }
 
-export function useAppointmentBoard(userId) {
-  const appointmentsKey = `appointments:${userId}`;
-  const clientsKey = `clients:${userId}`;
+export function useAppointmentBoard(userId, clinicId) {
+  const appointmentsKey = buildClinicResourceKey(
+    'appointments',
+    clinicId,
+    userId,
+  );
+  const clientsKey = buildClinicResourceKey('clients', clinicId, userId);
   const appointmentsResource = useCachedResource(
     appointmentsKey,
-    getAppointments,
+    () => getAppointments(clinicId),
   );
-  const clientsResource = useCachedResource(clientsKey, getClients);
+  const clientsResource = useCachedResource(
+    clientsKey,
+    () => getClients(clinicId),
+  );
   const appointments = appointmentsResource.data || EMPTY_APPOINTMENTS;
   const clients = clientsResource.data || EMPTY_CLIENTS;
   const isLoading =
@@ -97,7 +106,9 @@ export function useAppointmentBoard(userId) {
   const [deleteAppointmentError, setDeleteAppointmentError] = useState('');
   const [appointmentToComplete, setAppointmentToComplete] = useState(null);
   const [actualDuration, setActualDuration] = useState('30');
-  const [priceSetting, setPriceSetting] = useState(readPricePerMinuteSetting);
+  const [priceSetting, setPriceSetting] = useState(() =>
+    readPricePerMinuteSetting(clinicId),
+  );
   const [pricePerMinute, setPricePerMinute] = useState(
     String(DEFAULT_PRICE_PER_MINUTE),
   );
@@ -108,17 +119,28 @@ export function useAppointmentBoard(userId) {
   const [settingsError, setSettingsError] = useState('');
   const [completionError, setCompletionError] = useState('');
   const [isCompletingAppointment, setIsCompletingAppointment] = useState(false);
+  const [isTreatmentCorrection, setIsTreatmentCorrection] = useState(false);
+
+  const appointmentClients = useMemo(
+    () =>
+      clients.filter(
+        (client) =>
+          client.is_active !== false ||
+          client.id === appointmentToEdit?.client_id,
+      ),
+    [appointmentToEdit?.client_id, clients],
+  );
 
   const openAppointmentForm = useCallback(() => {
     setPageError('');
     setSuccess('');
     setAppointmentError('');
-    setSelectedClientId(clients[0]?.id || '');
+    setSelectedClientId(appointmentClients[0]?.id || '');
     setAppointmentDate(getDefaultAppointmentDateTime());
     setEstimatedDuration('30');
     setAppointmentToEdit(null);
     setIsAppointmentFormOpen(true);
-  }, [clients]);
+  }, [appointmentClients]);
 
   const closeAppointmentForm = useCallback(() => {
     if (!isCreatingAppointment) {
@@ -163,8 +185,22 @@ export function useAppointmentBoard(userId) {
     setPageError('');
     setSuccess('');
     setCompletionError('');
-    setActualDuration(String(appointment.estimated_duration || 30));
-    setPricePerMinute(String(priceSetting.value));
+    const isCorrection = appointment.status === 'completed';
+    setIsTreatmentCorrection(isCorrection);
+    setActualDuration(
+      String(
+        isCorrection
+          ? appointment.actual_duration || appointment.estimated_duration || 30
+          : appointment.estimated_duration || 30,
+      ),
+    );
+    setPricePerMinute(
+      String(
+        isCorrection
+          ? appointment.calculated_price ?? 0
+          : priceSetting.value,
+      ),
+    );
     setAppointmentToComplete(appointment);
   }, [priceSetting.value]);
 
@@ -172,6 +208,7 @@ export function useAppointmentBoard(userId) {
     if (!isCompletingAppointment) {
       setAppointmentToComplete(null);
       setCompletionError('');
+      setIsTreatmentCorrection(false);
     }
   }, [isCompletingAppointment]);
 
@@ -199,7 +236,7 @@ export function useAppointmentBoard(userId) {
 
     try {
       window.localStorage.setItem(
-        PRICE_PER_MINUTE_STORAGE_KEY,
+        getPricePerMinuteStorageKey(clinicId),
         String(rate),
       );
       setPriceSetting({ value: rate, error: '' });
@@ -234,7 +271,7 @@ export function useAppointmentBoard(userId) {
     setIsCreatingAppointment(true);
 
     try {
-      const newAppointment = await createAppointment({
+      const newAppointment = await createAppointment(clinicId, {
         client_id: selectedClientId,
         appointment_date: new Date(appointmentDate).toISOString(),
         estimated_duration: duration,
@@ -243,7 +280,7 @@ export function useAppointmentBoard(userId) {
       setAppointments((currentAppointments) =>
         sortByAppointmentDate([...currentAppointments, newAppointment]),
       );
-      invalidateResource(`client-next-appointments:${userId}`);
+      invalidateResource(`client-next-appointments:${clinicId}:${userId}`);
       setIsAppointmentFormOpen(false);
       setAppointmentStatus('scheduled');
       setSuccess(
@@ -281,18 +318,37 @@ export function useAppointmentBoard(userId) {
       return;
     }
 
+    if (
+      appointmentToEdit.status === 'completed' &&
+      selectedClientId !== appointmentToEdit.client_id
+    ) {
+      setAppointmentError('אין להעביר טיפול שהושלם ללקוח/ה אחרת.');
+      return;
+    }
+
+    if (
+      appointmentToEdit.status === 'completed' &&
+      appointmentStatus !== 'completed'
+    ) {
+      setAppointmentError('אין להוריד טיפול שהושלם מהסטטוס שבוצע.');
+      return;
+    }
+
     setIsUpdatingAppointment(true);
 
     try {
       const needsCompletion =
         appointmentStatus === 'completed' &&
         appointmentToEdit.status !== 'completed';
-      const updatedAppointment = await updateAppointment(appointmentToEdit.id, {
-        client_id: selectedClientId,
-        appointment_date: new Date(appointmentDate).toISOString(),
-        estimated_duration: duration,
-        status: needsCompletion ? 'scheduled' : appointmentStatus,
-      });
+      const updatedAppointment = await updateAppointment(
+        clinicId,
+        appointmentToEdit.id,
+        {
+          client_id: selectedClientId,
+          appointment_date: new Date(appointmentDate).toISOString(),
+          estimated_duration: duration,
+        },
+      );
 
       setAppointments((currentAppointments) =>
         sortByAppointmentDate(
@@ -303,7 +359,7 @@ export function useAppointmentBoard(userId) {
           ),
         ),
       );
-      invalidateResource(`client-next-appointments:${userId}`);
+      invalidateResource(`client-next-appointments:${clinicId}:${userId}`);
       setAppointmentToEdit(null);
 
       if (needsCompletion) {
@@ -335,13 +391,13 @@ export function useAppointmentBoard(userId) {
     setIsDeletingAppointment(true);
 
     try {
-      await deleteAppointment(appointmentToDelete.id);
+      await deleteAppointment(clinicId, appointmentToDelete.id);
       setAppointments((currentAppointments) =>
         currentAppointments.filter(
           (appointment) => appointment.id !== appointmentToDelete.id,
         ),
       );
-      invalidateResource(`client-next-appointments:${userId}`);
+      invalidateResource(`client-next-appointments:${clinicId}:${userId}`);
       setAppointmentToDelete(null);
       setSuccess(
         `התור של ${appointmentToDelete.clients?.full_name || 'הלקוחה'} נמחק.`,
@@ -370,8 +426,15 @@ export function useAppointmentBoard(userId) {
       return;
     }
 
-    if (!Number.isFinite(rate) || rate <= 0) {
-      setCompletionError('יש להזין מחיר חיובי לדקה עבור הטיפול.');
+    if (
+      !Number.isFinite(rate) ||
+      (isTreatmentCorrection ? rate < 0 : rate <= 0)
+    ) {
+      setCompletionError(
+        isTreatmentCorrection
+          ? 'יש להזין מחיר מתוקן שאינו שלילי.'
+          : 'יש להזין מחיר חיובי לדקה עבור הטיפול.',
+      );
       return;
     }
 
@@ -382,11 +445,19 @@ export function useAppointmentBoard(userId) {
     setIsCompletingAppointment(true);
 
     try {
-      const completedAppointment = await completeAppointment(
-        appointmentToComplete.id,
-        duration,
-        rate,
-      );
+      const completedAppointment = isTreatmentCorrection
+        ? await correctCompletedAppointment(
+            clinicId,
+            appointmentToComplete.id,
+            duration,
+            rate,
+          )
+        : await completeAppointment(
+            clinicId,
+            appointmentToComplete.id,
+            duration,
+            rate,
+          );
 
       setAppointments((currentAppointments) =>
         currentAppointments.map((appointment) =>
@@ -395,10 +466,13 @@ export function useAppointmentBoard(userId) {
             : appointment,
         ),
       );
-      invalidateResource(`client-next-appointments:${userId}`);
+      invalidateResource(`client-next-appointments:${clinicId}:${userId}`);
       setAppointmentToComplete(null);
+      setIsTreatmentCorrection(false);
       setSuccess(
-        `הטיפול הסתיים. המחיר לתשלום: ${completedAppointment.calculated_price} ₪.`,
+        isTreatmentCorrection
+          ? `פרטי הטיפול תוקנו. המחיר המעודכן: ${completedAppointment.calculated_price} ₪.`
+          : `הטיפול הסתיים. המחיר לתשלום: ${completedAppointment.calculated_price} ₪.`,
       );
     } catch (completeError) {
       console.error('Failed to complete appointment:', completeError);
@@ -449,17 +523,25 @@ export function useAppointmentBoard(userId) {
     const minutesToComplete = Number(actualDuration);
     const rateForCurrentTreatment = Number(pricePerMinute);
 
+    if (
+      isTreatmentCorrection &&
+      Number.isFinite(rateForCurrentTreatment) &&
+      rateForCurrentTreatment >= 0
+    ) {
+      return Number(rateForCurrentTreatment.toFixed(2));
+    }
+
     return Number.isInteger(minutesToComplete) &&
       minutesToComplete > 0 &&
       Number.isFinite(rateForCurrentTreatment) &&
       rateForCurrentTreatment > 0
       ? Number((minutesToComplete * rateForCurrentTreatment).toFixed(2))
       : null;
-  }, [actualDuration, pricePerMinute]);
+  }, [actualDuration, isTreatmentCorrection, pricePerMinute]);
 
   return {
     appointments,
-    clients,
+    clients: appointmentClients,
     appointmentView,
     setAppointmentView,
     isLoading,
@@ -499,6 +581,7 @@ export function useAppointmentBoard(userId) {
     setSettingsError,
     completionError,
     isCompletingAppointment,
+    isTreatmentCorrection,
     scheduledAppointments,
     overdueAppointments,
     todayAppointments,

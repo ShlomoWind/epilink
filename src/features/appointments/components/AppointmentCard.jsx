@@ -206,17 +206,29 @@ function AppointmentCard({
 
       <Actions>
         <StatusBadge status={appointment.status} />
-        <ActionButton
-          $border="#d1d5db"
-          $color="#374151"
-          $hover="#f9fafb"
-          onClick={() => onEdit(appointment)}
-          type="button"
-        >
-          <Pencil aria-hidden="true" size={15} />
-          עריכה
-        </ActionButton>
         {!isCompleted && (
+          <ActionButton
+            $border="#d1d5db"
+            $color="#374151"
+            $hover="#f9fafb"
+            onClick={() => onEdit(appointment)}
+            type="button"
+          >
+            <Pencil aria-hidden="true" size={15} />
+            עריכה
+          </ActionButton>
+        )}
+        {isCompleted ? (
+          <ActionButton
+            $border="#ddd6fe"
+            $color="#5b21b6"
+            $hover="#f5f3ff"
+            onClick={() => onComplete(appointment)}
+            type="button"
+          >
+            תיקון טיפול
+          </ActionButton>
+        ) : (
           <ActionButton
             $border="#ddd6fe"
             $color="#5b21b6"
@@ -227,17 +239,19 @@ function AppointmentCard({
             סיום טיפול
           </ActionButton>
         )}
-        <ActionButton
-          aria-label={`מחיקת התור של ${clientName}`}
-          $border="#fecaca"
-          $color="#b91c1c"
-          $hover="#fef2f2"
-          onClick={() => onDelete(appointment)}
-          type="button"
-        >
-          <Trash2 aria-hidden="true" size={15} />
-          מחיקה
-        </ActionButton>
+        {!isCompleted && (
+          <ActionButton
+            aria-label={`מחיקת התור של ${clientName}`}
+            $border="#fecaca"
+            $color="#b91c1c"
+            $hover="#fef2f2"
+            onClick={() => onDelete(appointment)}
+            type="button"
+          >
+            <Trash2 aria-hidden="true" size={15} />
+            מחיקה
+          </ActionButton>
+        )}
       </Actions>
     </AppointmentArticle>
   );

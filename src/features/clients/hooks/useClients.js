@@ -1,14 +1,16 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useCachedResource } from '../../../hooks/useCachedResource';
 import {
+  buildClinicResourceKey,
   invalidateResource,
   updateCachedResource,
 } from '../../../utils/resourceCache';
 import {
   createClient,
-  deleteClient,
+  deactivateClient,
   getClients,
   getNextAppointments,
+  recordClientBalanceAdjustment,
   updateClient,
 } from '../clientsService';
 import { createClientForm, EMPTY_CLIENT_FORM } from '../constants/clientForm';
@@ -22,13 +24,20 @@ function sortClients(clients) {
   );
 }
 
-export function useClients(userId) {
-  const clientsKey = `clients:${userId}`;
-  const nextAppointmentsKey = `client-next-appointments:${userId}`;
-  const clientsResource = useCachedResource(clientsKey, getClients);
+export function useClients(userId, clinicId) {
+  const clientsKey = buildClinicResourceKey('clients', clinicId, userId);
+  const nextAppointmentsKey = buildClinicResourceKey(
+    'client-next-appointments',
+    clinicId,
+    userId,
+  );
+  const clientsResource = useCachedResource(
+    clientsKey,
+    () => getClients(clinicId),
+  );
   const nextAppointmentsResource = useCachedResource(
     nextAppointmentsKey,
-    getNextAppointments,
+    () => getNextAppointments(clinicId),
   );
   const clients = clientsResource.data || EMPTY_CLIENTS;
   const nextAppointments = useMemo(() => {
@@ -56,6 +65,7 @@ export function useClients(userId) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAdjustingBalance, setIsAdjustingBalance] = useState(false);
   const [success, setSuccess] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -119,7 +129,7 @@ export function useClients(userId) {
     setIsSaving(true);
 
     try {
-      const newClient = await createClient(form);
+      const newClient = await createClient(clinicId, form);
       updateCachedResource(clientsKey, (currentClients) =>
         sortClients([...currentClients, newClient]),
       );
@@ -144,7 +154,11 @@ export function useClients(userId) {
     setIsSaving(true);
 
     try {
-      const updatedClient = await updateClient(selectedClient.id, form);
+      const updatedClient = await updateClient(
+        clinicId,
+        selectedClient.id,
+        form,
+      );
       updateCachedResource(clientsKey, (currentClients) =>
         sortClients(
           currentClients.map((client) =>
@@ -152,7 +166,7 @@ export function useClients(userId) {
           ),
         ),
       );
-      invalidateResource(`appointments:${userId}`);
+      invalidateResource(`appointments:${clinicId}:${userId}`);
       setSelectedClient(updatedClient);
       setForm(createClientForm(updatedClient));
       setIsEditing(false);
@@ -165,7 +179,7 @@ export function useClients(userId) {
     }
   }
 
-  async function handleDeleteClient() {
+  async function handleDeactivateClient() {
     setFormError('');
 
     if (!selectedClient) {
@@ -175,22 +189,62 @@ export function useClients(userId) {
     setIsDeleting(true);
 
     try {
-      await deleteClient(selectedClient.id);
-      updateCachedResource(clientsKey, (currentClients) =>
-        currentClients.filter((client) => client.id !== selectedClient.id),
+      const deactivatedClient = await deactivateClient(
+        clinicId,
+        selectedClient.id,
       );
-      invalidateResource(`appointments:${userId}`);
+      updateCachedResource(clientsKey, (currentClients) =>
+        currentClients.map((client) =>
+          client.id === deactivatedClient.id ? deactivatedClient : client,
+        ),
+      );
+      invalidateResource(`appointments:${clinicId}:${userId}`);
       setSelectedClient(null);
       setIsDeleteConfirmationOpen(false);
-      setSuccess(`הלקוח/ה ${selectedClient.full_name} נמחק/ה.`);
-    } catch (deleteError) {
-      console.error('Failed to delete client:', deleteError);
+      setSuccess(`הלקוח/ה ${selectedClient.full_name} הושבת/ה.`);
+    } catch (deactivateError) {
+      console.error('Failed to deactivate client:', deactivateError);
       setFormError(
-        deleteError.message ||
-          'לא ניתן למחוק את הלקוח/ה. ייתכן שקיימים תורים המשויכים אליו/ה.',
+        deactivateError.message || 'לא ניתן להשבית את הלקוח/ה.',
       );
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  async function handleBalanceAdjustment(amount, note) {
+    if (!selectedClient) {
+      return false;
+    }
+
+    setFormError('');
+    setIsAdjustingBalance(true);
+
+    try {
+      const outstanding_balance = await recordClientBalanceAdjustment(
+        clinicId,
+        selectedClient.id,
+        amount,
+        note,
+      );
+      const updatedClient = { ...selectedClient, outstanding_balance };
+
+      updateCachedResource(clientsKey, (currentClients) =>
+        currentClients.map((client) =>
+          client.id === updatedClient.id ? updatedClient : client,
+        ),
+      );
+      setSelectedClient(updatedClient);
+      setSuccess(`יתרת ${updatedClient.full_name} עודכנה ונרשמה ביומן ההתאמות.`);
+      return true;
+    } catch (adjustmentError) {
+      console.error('Failed to adjust client balance:', adjustmentError);
+      setFormError(
+        adjustmentError.message || 'לא ניתן לשמור את התאמת היתרה.',
+      );
+      return false;
+    } finally {
+      setIsAdjustingBalance(false);
     }
   }
 
@@ -217,6 +271,7 @@ export function useClients(userId) {
     isLoading,
     isSaving,
     isDeleting,
+    isAdjustingBalance,
     error,
     success,
     isCreateOpen,
@@ -237,6 +292,7 @@ export function useClients(userId) {
     cancelEditing,
     handleCreateClient,
     handleUpdateClient,
-    handleDeleteClient,
+    handleDeactivateClient,
+    handleBalanceAdjustment,
   };
 }

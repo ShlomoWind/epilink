@@ -1,8 +1,7 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import {
   Plus,
   Search,
-  Trash2,
   UserRound,
   Users,
 } from 'lucide-react';
@@ -18,6 +17,7 @@ import {
   EmptyState,
   EmptyTitle,
   Eyebrow,
+  FieldInput,
   FieldLabel,
   FieldTitle,
   FormStack,
@@ -66,7 +66,11 @@ const DetailsActions = styled(ButtonRow)`
   border-top: 1px solid #f3f4f6;
 `;
 
-function ClientList({ userId }) {
+function ClientList({ userId, clinicId }) {
+  const [isBalanceAdjustmentOpen, setIsBalanceAdjustmentOpen] =
+    useState(false);
+  const [balanceAdjustmentAmount, setBalanceAdjustmentAmount] = useState('');
+  const [balanceAdjustmentNote, setBalanceAdjustmentNote] = useState('');
   const {
     clients,
     filteredClients,
@@ -76,12 +80,12 @@ function ClientList({ userId }) {
     isLoading,
     isSaving,
     isDeleting,
+    isAdjustingBalance,
     error,
     success,
     isCreateOpen,
     selectedClient,
     isEditing,
-    setIsEditing,
     isDeleteConfirmationOpen,
     setIsDeleteConfirmationOpen,
     form,
@@ -95,8 +99,23 @@ function ClientList({ userId }) {
     cancelEditing,
     handleCreateClient,
     handleUpdateClient,
-    handleDeleteClient,
-  } = useClients(userId);
+    handleDeactivateClient,
+    handleBalanceAdjustment,
+  } = useClients(userId, clinicId);
+
+  async function submitBalanceAdjustment(event) {
+    event.preventDefault();
+    const saved = await handleBalanceAdjustment(
+      balanceAdjustmentAmount,
+      balanceAdjustmentNote,
+    );
+
+    if (saved) {
+      setIsBalanceAdjustmentOpen(false);
+      setBalanceAdjustmentAmount('');
+      setBalanceAdjustmentNote('');
+    }
+  }
 
   return (
     <PageContainer>
@@ -279,11 +298,10 @@ function ClientList({ userId }) {
           ) : isDeleteConfirmationOpen ? (
             <FormStack as="div">
               <FeedbackMessage>
-                למחוק את {selectedClient.full_name}? לא ניתן לבטל פעולה זו.
+                להשבית את {selectedClient.full_name}? ההיסטוריה תישמר.
               </FeedbackMessage>
               <DeleteNote>
-                אם קיימים תורים המשויכים ללקוח/ה, ייתכן שמסד הנתונים ימנע את
-                המחיקה.
+                לקוח מושבת נשאר נגיש לצפייה בהיסטוריית הטיפולים שלו.
               </DeleteNote>
               <ButtonRow>
                 <Button
@@ -298,10 +316,10 @@ function ClientList({ userId }) {
                   $variant="danger"
                   $grow
                   disabled={isDeleting}
-                  onClick={handleDeleteClient}
+                  onClick={handleDeactivateClient}
                   type="button"
                 >
-                  {isDeleting ? 'מוחק...' : 'מחיקת לקוח'}
+                  {isDeleting ? 'משבית...' : 'השבתת לקוח'}
                 </Button>
               </ButtonRow>
             </FormStack>
@@ -309,6 +327,19 @@ function ClientList({ userId }) {
             <FormStack as="div">
               <ClientDetails client={selectedClient} />
               <DetailsActions>
+                <Button
+                  $variant="secondary"
+                  $grow
+                  onClick={() => {
+                    setBalanceAdjustmentAmount('');
+                    setBalanceAdjustmentNote('');
+                    setFormError('');
+                    setIsBalanceAdjustmentOpen(true);
+                  }}
+                  type="button"
+                >
+                  התאמת יתרה
+                </Button>
                 <Button
                   $variant="dangerOutline"
                   $grow
@@ -318,22 +349,69 @@ function ClientList({ userId }) {
                   }}
                   type="button"
                 >
-                  <Trash2 aria-hidden="true" size={17} />
-                  מחיקת לקוח
-                </Button>
-                <Button
-                  $grow
-                  onClick={() => {
-                    setFormError('');
-                    setIsEditing(true);
-                  }}
-                  type="button"
-                >
-                  עריכת פרטים
+                  השבתת לקוח
                 </Button>
               </DetailsActions>
             </FormStack>
           )}
+        </Modal>
+      )}
+
+      {isBalanceAdjustmentOpen && selectedClient && (
+        <Modal
+          description="התאמה חיובית מגדילה את החוב; התאמה שלילית מקטינה אותו. כל שינוי נשמר עם הסבר."
+          onClose={() => {
+            if (!isAdjustingBalance) {
+              setIsBalanceAdjustmentOpen(false);
+            }
+          }}
+          title={`התאמת יתרה — ${selectedClient.full_name}`}
+        >
+          <FormStack onSubmit={submitBalanceAdjustment}>
+            {formError && (
+              <div>
+                <FeedbackMessage>{formError}</FeedbackMessage>
+              </div>
+            )}
+            <FieldLabel>
+              <FieldTitle>סכום ההתאמה (₪)</FieldTitle>
+              <FieldInput
+                autoFocus
+                required
+                step="0.01"
+                type="number"
+                value={balanceAdjustmentAmount}
+                onChange={(event) =>
+                  setBalanceAdjustmentAmount(event.target.value)
+                }
+              />
+            </FieldLabel>
+            <FieldLabel>
+              <FieldTitle>סיבת ההתאמה</FieldTitle>
+              <FieldInput
+                maxLength={500}
+                required
+                value={balanceAdjustmentNote}
+                onChange={(event) =>
+                  setBalanceAdjustmentNote(event.target.value)
+                }
+              />
+            </FieldLabel>
+            <ButtonRow>
+              <Button
+                $variant="secondary"
+                $grow
+                disabled={isAdjustingBalance}
+                onClick={() => setIsBalanceAdjustmentOpen(false)}
+                type="button"
+              >
+                ביטול
+              </Button>
+              <Button $grow disabled={isAdjustingBalance} type="submit">
+                {isAdjustingBalance ? 'שומר...' : 'שמירת התאמה'}
+              </Button>
+            </ButtonRow>
+          </FormStack>
         </Modal>
       )}
     </PageContainer>

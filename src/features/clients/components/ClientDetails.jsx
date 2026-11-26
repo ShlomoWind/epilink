@@ -53,6 +53,10 @@ export default function ClientDetails({ client }) {
         value={`${formatCurrency(client.outstanding_balance)} ₪`}
       />
       <ClientDetail
+        label="סטטוס לקוח"
+        value={client.is_active === false ? 'מושבת' : 'פעיל'}
+      />
+      <ClientDetail
         label="תאריך הצטרפות"
         value={formatDate(client.created_at, JOIN_DATE_FORMAT)}
       />

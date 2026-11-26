@@ -41,6 +41,7 @@ const PriceEstimateValue = styled.p`
 
 export default function AppointmentCompletionModal({
   appointment,
+  isCorrection,
   actualDuration,
   onDurationChange,
   pricePerMinute,
@@ -53,9 +54,13 @@ export default function AppointmentCompletionModal({
 }) {
   return (
     <Modal
-      description={`עדכון משך הטיפול עבור ${appointment.clients?.full_name || 'הלקוח/ה'}.`}
+      description={
+        isCorrection
+          ? `תיקון משך ומחיר הטיפול עבור ${appointment.clients?.full_name || 'הלקוח/ה'}. שינוי במחיר יתועד ביומן התאמות היתרה.`
+          : `עדכון משך הטיפול עבור ${appointment.clients?.full_name || 'הלקוח/ה'}.`
+      }
       onClose={onClose}
-      title="סיום טיפול"
+      title={isCorrection ? 'תיקון טיפול שהושלם' : 'סיום טיפול'}
     >
       {error && (
         <div>
@@ -65,9 +70,7 @@ export default function AppointmentCompletionModal({
 
       <FormStack $gap="1.25rem" onSubmit={onSubmit}>
         <FieldLabel>
-          <FieldTitle>
-            משך הטיפול בפועל (בדקות)
-          </FieldTitle>
+          <FieldTitle>משך הטיפול בפועל (בדקות)</FieldTitle>
           <FieldInput
             autoFocus
             min="1"
@@ -80,10 +83,12 @@ export default function AppointmentCompletionModal({
 
         <FieldLabel>
           <FieldTitle>
-            מחיר לדקה עבור טיפול זה (₪)
+            {isCorrection
+              ? 'מחיר הטיפול המתוקן (₪)'
+              : 'מחיר לדקה עבור טיפול זה (₪)'}
           </FieldTitle>
           <FieldInput
-            min="0.01"
+            min={isCorrection ? '0' : '0.01'}
             onChange={(event) => onPriceChange(event.target.value)}
             required
             step="0.01"
@@ -92,14 +97,15 @@ export default function AppointmentCompletionModal({
           />
         </FieldLabel>
 
-        <PriceEstimate
-          aria-live="polite"
-        >
+        <PriceEstimate aria-live="polite">
           <div>
-            <PriceEstimateTitle>מחיר משוער</PriceEstimateTitle>
+            <PriceEstimateTitle>
+              {isCorrection ? 'המחיר המתוקן' : 'מחיר משוער'}
+            </PriceEstimateTitle>
             <PriceEstimateCalculation>
-              {actualDuration || '0'} דקות ×{' '}
-              {formatCurrency(Number(pricePerMinute))} לדקה
+              {isCorrection
+                ? 'המחיר הסופי שהוזן'
+                : `${actualDuration || '0'} דקות × ${formatCurrency(Number(pricePerMinute))} לדקה`}
             </PriceEstimateCalculation>
           </div>
           <PriceEstimateValue>
@@ -125,7 +131,11 @@ export default function AppointmentCompletionModal({
             disabled={isCompleting}
             type="submit"
           >
-            {isCompleting ? 'שומר...' : 'אישור סיום טיפול'}
+            {isCompleting
+              ? 'שומר...'
+              : isCorrection
+                ? 'שמירת תיקון'
+                : 'אישור סיום טיפול'}
           </Button>
         </ButtonRow>
       </FormStack>

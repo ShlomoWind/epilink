@@ -68,6 +68,7 @@ export default function AppointmentFormModal({
             <FieldSelect
               onChange={(event) => onClientChange(event.target.value)}
               required
+              disabled={Boolean(isEditing && appointment.status === 'completed')}
               value={selectedClientId}
             >
               {clients.map((client) => (
@@ -87,8 +88,15 @@ export default function AppointmentFormModal({
                 onChange={(event) => onStatusChange(event.target.value)}
                 value={appointmentStatus}
               >
-                <option value="scheduled">נקבע</option>
-                <option value="completed">בוצע</option>
+                {appointment.status !== 'completed' && (
+                  <option value="scheduled">נקבע</option>
+                )}
+                {appointment.status !== 'completed' && (
+                  <option value="completed">בוצע</option>
+                )}
+                {appointment.status === 'completed' && (
+                  <option value="completed">בוצע</option>
+                )}
               </FieldSelect>
               {appointmentStatus === 'completed' &&
                 appointment.status !== 'completed' && (
@@ -99,7 +107,7 @@ export default function AppointmentFormModal({
               {appointmentStatus === 'scheduled' &&
                 appointment.status === 'completed' && (
                   <FieldHint>
-                    החזרת התור ל״נקבע״ תסיר את משך הטיפול והמחיר שנשמרו.
+                    טיפול שהושלם אינו ניתן להוריד ל״נקבע״.
                   </FieldHint>
                 )}
             </FieldLabel>

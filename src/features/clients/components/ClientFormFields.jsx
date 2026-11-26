@@ -74,19 +74,6 @@ export default function ClientFormFields({ form, onChange }) {
         </FieldSelect>
       </FieldLabel>
 
-      <FieldLabel>
-        <FieldTitle>יתרת חוב (₪)</FieldTitle>
-        <FieldInput
-          min="0"
-          onChange={(event) =>
-            onChange('outstanding_balance', event.target.value)
-          }
-          required
-          step="0.01"
-          type="number"
-          value={form.outstanding_balance}
-        />
-      </FieldLabel>
     </>
   );
 }

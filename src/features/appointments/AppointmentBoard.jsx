@@ -35,7 +35,7 @@ const TabPanel = styled.div`
   gap: 2rem;
 `;
 
-function AppointmentBoard({ userId }) {
+function AppointmentBoard({ userId, clinicId }) {
   const {
     clients,
     appointmentView,
@@ -71,6 +71,7 @@ function AppointmentBoard({ userId }) {
     settingsError,
     completionError,
     isCompletingAppointment,
+    isTreatmentCorrection,
     scheduledAppointments,
     overdueAppointments,
     todayAppointments,
@@ -92,7 +93,7 @@ function AppointmentBoard({ userId }) {
     handleUpdateAppointment,
     handleDeleteAppointment,
     handleCompleteAppointment,
-  } = useAppointmentBoard(userId);
+  } = useAppointmentBoard(userId, clinicId);
 
   return (
     <PageContainer $gap="2rem">
@@ -263,6 +264,7 @@ function AppointmentBoard({ userId }) {
           calculatedPrice={calculatedPrice}
           error={completionError}
           isCompleting={isCompletingAppointment}
+          isCorrection={isTreatmentCorrection}
           onClose={closeCompletionForm}
           onDurationChange={setActualDuration}
           onPriceChange={setPricePerMinute}

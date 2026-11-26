@@ -3,7 +3,6 @@ export const EMPTY_CLIENT_FORM = {
   phone: '',
   email: '',
   needle_type: '',
-  outstanding_balance: '0',
 };
 
 export function createClientForm(client) {
@@ -12,6 +11,5 @@ export function createClientForm(client) {
     phone: client.phone || '',
     email: client.email || '',
     needle_type: client.needle_type || '',
-    outstanding_balance: String(client.outstanding_balance ?? 0),
   };
 }

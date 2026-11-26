@@ -70,6 +70,16 @@ const ClientName = styled.span`
   white-space: nowrap;
 `;
 
+const ClientStatus = styled.span`
+  flex: 0 0 auto;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.7rem;
+  font-weight: 600;
+`;
+
 const DetailsLink = styled.span`
   padding: 0.25rem 0.625rem;
   border-radius: 9999px;
@@ -159,6 +169,9 @@ function ClientCard({
           <ClientName>
             {client.full_name}
           </ClientName>
+          {client.is_active === false && (
+            <ClientStatus>מושבת</ClientStatus>
+          )}
         </Identity>
         <DetailsLink>
           פרטים

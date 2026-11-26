@@ -3,7 +3,11 @@ import { supabase } from '../../supabaseClient';
 /**
  * שליפת כל התורים כולל פרטי הלקוח
  */
-export async function getAppointments() {
+export async function getAppointments(clinicId) {
+  if (typeof clinicId !== 'string' || !clinicId.trim()) {
+    throw new Error('יש לבחור מרפאה פעילה.');
+  }
+
   const { data, error } = await supabase
     .from('appointments')
     .select(`
@@ -21,6 +25,7 @@ export async function getAppointments() {
         phone
       )
     `)
+    .eq('clinic_id', clinicId)
     .order('appointment_date', { ascending: true });
 
   if (error) {
@@ -34,17 +39,21 @@ export async function getAppointments() {
  * הוספת תור חדש
  * @param {Object} appointmentData - { client_id, appointment_date, estimated_duration }
  */
-export async function createAppointment(appointmentData) {
+export async function createAppointment(clinicId, appointmentData) {
+  if (typeof clinicId !== 'string' || !clinicId.trim()) {
+    throw new Error('יש לבחור מרפאה פעילה.');
+  }
+
   const { client_id, appointment_date, estimated_duration = 30 } = appointmentData;
 
   const { data, error } = await supabase
     .from('appointments')
     .insert([
       {
+        clinic_id: clinicId,
         client_id,
         appointment_date,
         estimated_duration,
-        status: 'scheduled',
       }
     ])
     .select(`
@@ -65,9 +74,14 @@ export async function createAppointment(appointmentData) {
 }
 
 export async function updateAppointment(
+  clinicId,
   id,
-  { client_id, appointment_date, estimated_duration, status = 'scheduled' },
+  { client_id, appointment_date, estimated_duration },
 ) {
+  if (typeof clinicId !== 'string' || !clinicId.trim()) {
+    throw new Error('יש לבחור מרפאה פעילה.');
+  }
+
   if (typeof id !== 'string' || !id.trim()) {
     throw new Error('מזהה התור אינו תקין.');
   }
@@ -87,25 +101,16 @@ export async function updateAppointment(
     throw new Error('משך התור חייב להיות מספר חיובי של דקות שלמות.');
   }
 
-  if (status !== 'scheduled' && status !== 'completed') {
-    throw new Error('סטטוס התור אינו תקין.');
-  }
-
   const updates = {
     client_id,
     appointment_date,
     estimated_duration,
-    status,
   };
-
-  if (status === 'scheduled') {
-    updates.actual_duration = null;
-    updates.calculated_price = null;
-  }
 
   const { data, error } = await supabase
     .from('appointments')
     .update(updates)
+    .eq('clinic_id', clinicId)
     .eq('id', id)
     .select(`
       *,
@@ -124,7 +129,11 @@ export async function updateAppointment(
   return data;
 }
 
-export async function deleteAppointment(id) {
+export async function deleteAppointment(clinicId, id) {
+  if (typeof clinicId !== 'string' || !clinicId.trim()) {
+    throw new Error('יש לבחור מרפאה פעילה.');
+  }
+
   if (typeof id !== 'string' || !id.trim()) {
     throw new Error('מזהה התור אינו תקין.');
   }
@@ -132,6 +141,7 @@ export async function deleteAppointment(id) {
   const { error } = await supabase
     .from('appointments')
     .delete()
+    .eq('clinic_id', clinicId)
     .eq('id', id);
 
   if (error) {
@@ -146,10 +156,15 @@ export async function deleteAppointment(id) {
  * @param {number} [pricePerMinute=2.5] - תעריף בדקות בשקלים
  */
 export async function completeAppointment(
+  clinicId,
   id,
   actual_duration,
   pricePerMinute = 2.5,
 ) {
+  if (typeof clinicId !== 'string' || !clinicId.trim()) {
+    throw new Error('יש לבחור מרפאה פעילה.');
+  }
+
   if (!id || typeof id !== 'string') {
     throw new Error('מזהה התור אינו תקין.');
   }
@@ -165,15 +180,23 @@ export async function completeAppointment(
   const calculated_price = Number(
     (actual_duration * pricePerMinute).toFixed(2),
   );
+  if (!Number.isFinite(calculated_price) || calculated_price > 99999999.99) {
+    throw new Error('מחיר הטיפול חורג מהסכום המרבי הנתמך.');
+  }
 
-  const { data, error } = await supabase
+  const { error } = await supabase.rpc('complete_clinic_appointment', {
+    p_clinic_id: clinicId,
+    p_appointment_id: id,
+    p_actual_duration: actual_duration,
+    p_price_per_minute: pricePerMinute,
+  });
+
+  if (error) {
+    throw new Error(`שגיאה בסיום תור: ${error.message}`);
+  }
+
+  const { data, error: fetchError } = await supabase
     .from('appointments')
-    .update({
-      actual_duration,
-      calculated_price,
-      status: 'completed',
-    })
-    .eq('id', id)
     .select(`
       *,
       clients (
@@ -182,10 +205,77 @@ export async function completeAppointment(
         phone
       )
     `)
+    .eq('clinic_id', clinicId)
+    .eq('id', id)
     .single();
 
+  if (fetchError) {
+    throw new Error(
+      `הטיפול הושלם אך לא ניתן לטעון את התור המעודכן: ${fetchError.message}`,
+    );
+  }
+
+  return data;
+}
+
+export async function correctCompletedAppointment(
+  clinicId,
+  id,
+  actual_duration,
+  calculated_price,
+) {
+  if (typeof clinicId !== 'string' || !clinicId.trim()) {
+    throw new Error('יש לבחור מרפאה פעילה.');
+  }
+
+  if (typeof id !== 'string' || !id.trim()) {
+    throw new Error('מזהה התור אינו תקין.');
+  }
+
+  if (!Number.isInteger(actual_duration) || actual_duration <= 0) {
+    throw new Error('משך הטיפול חייב להיות מספר חיובי של דקות שלמות.');
+  }
+
+  if (
+    !Number.isFinite(calculated_price) ||
+    calculated_price < 0 ||
+    calculated_price > 99999999.99
+  ) {
+    throw new Error('מחיר הטיפול המתוקן אינו תקין.');
+  }
+
+  const { error } = await supabase.rpc(
+    'correct_completed_clinic_appointment',
+    {
+      p_clinic_id: clinicId,
+      p_appointment_id: id,
+      p_actual_duration: actual_duration,
+      p_calculated_price: calculated_price,
+    },
+  );
+
   if (error) {
-    throw new Error(`שגיאה בסיום תור: ${error.message}`);
+    throw new Error(`שגיאה בתיקון הטיפול שהושלם: ${error.message}`);
+  }
+
+  const { data, error: fetchError } = await supabase
+    .from('appointments')
+    .select(`
+      *,
+      clients (
+        id,
+        full_name,
+        phone
+      )
+    `)
+    .eq('clinic_id', clinicId)
+    .eq('id', id)
+    .single();
+
+  if (fetchError) {
+    throw new Error(
+      `הטיפול תוקן אך לא ניתן לטעון את התור המעודכן: ${fetchError.message}`,
+    );
   }
 
   return data;

@@ -37,6 +37,10 @@ export default function App() {
     isLoading: isAuthLoading,
     isSubmitting,
     error: authError,
+    clinics,
+    activeClinicId,
+    isLoadingClinics,
+    selectClinic,
     loginWithGoogle,
     logout,
   } = useAuth();
@@ -74,6 +78,27 @@ export default function App() {
     );
   }
 
+  if (!activeClinicId && isLoadingClinics) {
+    return (
+      <AppShell>
+        <AuthLoadingState aria-live="polite" dir="rtl">
+          <LoadingIcon aria-hidden="true" size={22} />
+          טוען מרפאות...
+        </AuthLoadingState>
+      </AppShell>
+    );
+  }
+
+  if (!activeClinicId) {
+    return (
+      <AppShell>
+        <AuthLoadingState aria-live="polite" dir="rtl">
+          {authError || 'לא קיימת חברות מרפאה פעילה לחשבון הזה.'}
+        </AuthLoadingState>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <Navbar
@@ -83,6 +108,9 @@ export default function App() {
         googleIdentity={googleIdentity}
         isSubmitting={isSubmitting}
         authError={authError}
+        clinics={clinics}
+        activeClinicId={activeClinicId}
+        onClinicChange={selectClinic}
         onLogin={loginWithGoogle}
         onLogout={logout}
       />
@@ -90,11 +118,19 @@ export default function App() {
       <MainContent>
         <Suspense fallback={<FeatureLoadingState />}>
           <div hidden={activeTab !== 'appointments'}>
-            <AppointmentBoard key={user.id} userId={user.id} />
+            <AppointmentBoard
+              key={`${activeClinicId}:${user.id}`}
+              userId={user.id}
+              clinicId={activeClinicId}
+            />
           </div>
           <div hidden={activeTab !== 'clients'}>
             {(hasVisitedClients || activeTab === 'clients') && (
-              <ClientList key={user.id} userId={user.id} />
+              <ClientList
+                key={`${activeClinicId}:${user.id}`}
+                userId={user.id}
+                clinicId={activeClinicId}
+              />
             )}
           </div>
         </Suspense>

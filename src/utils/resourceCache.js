@@ -1,6 +1,18 @@
 const resources = new Map();
 let cacheGeneration = 0;
 
+export function buildClinicResourceKey(resourceName, clinicId, userId) {
+  if (
+    typeof resourceName !== 'string'
+    || typeof clinicId !== 'string'
+    || typeof userId !== 'string'
+  ) {
+    throw new TypeError('Resource, clinic and user identifiers are required.');
+  }
+
+  return `${resourceName}:${clinicId}:${userId}`;
+}
+
 function getResource(key) {
   if (!resources.has(key)) {
     resources.set(key, {

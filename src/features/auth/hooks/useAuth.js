@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../../supabaseClient';
 import { clearResourceCache } from '../../../utils/resourceCache';
 import { fetchGoogleIdentity } from '../services/googleIdentityService';
@@ -7,6 +7,9 @@ import {
   signInWithGoogle,
   signOut,
 } from '../services/googleAuthService';
+import { getClinicMemberships } from '../services/clinicMembershipService';
+
+const ACTIVE_CLINIC_STORAGE_KEY = 'epilink-active-clinic';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -15,34 +18,54 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [clinics, setClinics] = useState([]);
+  const [activeClinicId, setActiveClinicId] = useState('');
+  const [isLoadingClinics, setIsLoadingClinics] = useState(false);
+  const activeUserId = useRef(null);
+  const userId = user?.id;
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUser = event === 'SIGNED_OUT' ? null : (session?.user ?? null);
+      const nextUserId = nextUser?.id ?? null;
+      const userChanged = activeUserId.current !== nextUserId;
+      activeUserId.current = nextUserId;
 
-      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+      if (userChanged || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         clearResourceCache();
       }
 
       setUser(nextUser);
 
-      if (event === 'SIGNED_OUT') {
+      if (!nextUser) {
         setGoogleAccess(null);
         setGoogleIdentity(null);
         setError('');
-      } else if (event === 'SIGNED_IN') {
-        setGoogleIdentity(null);
-        setError('');
+        setClinics([]);
+        setActiveClinicId('');
+        setIsLoadingClinics(false);
+      } else {
+        if (userChanged) {
+          setGoogleIdentity(null);
+          setClinics([]);
+          setActiveClinicId('');
+          setError('');
+          setIsLoadingClinics(true);
+        }
 
-        if (session?.provider_token && nextUser) {
-          setGoogleAccess({
-            userId: nextUser.id,
-            token: session.provider_token,
-          });
-        } else {
-          setGoogleAccess(null);
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          setGoogleIdentity(null);
+
+          if (session?.provider_token) {
+            setGoogleAccess({
+              userId: nextUser.id,
+              token: session.provider_token,
+            });
+          } else {
+            setGoogleAccess(null);
+          }
         }
       }
 
@@ -53,7 +76,84 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
-    if (!googleAccess || googleAccess.userId !== user?.id) {
+    if (!userId) {
+      return;
+    }
+    let isCancelled = false;
+
+    getClinicMemberships(userId)
+      .then((memberships) => {
+        if (isCancelled) {
+          return;
+        }
+
+        setClinics(memberships);
+        const storageKey = `${ACTIVE_CLINIC_STORAGE_KEY}:${userId}`;
+        let savedClinicId = '';
+        try {
+          savedClinicId = window.localStorage.getItem(storageKey) || '';
+        } catch (storageError) {
+          console.error('Failed to read the active clinic preference:', storageError);
+          setError('לא ניתן לקרוא את בחירת המרפאה השמורה בדפדפן.');
+        }
+        const savedMembership = memberships.find(
+          (clinic) => clinic.id === savedClinicId,
+        );
+
+        setActiveClinicId(
+          savedMembership?.id || memberships[0]?.id || '',
+        );
+        if (!savedMembership && memberships[0]) {
+          try {
+            window.localStorage.setItem(storageKey, memberships[0].id);
+          } catch (storageError) {
+            console.error('Failed to save the active clinic preference:', storageError);
+            setError('המרפאה נבחרה, אך לא ניתן לשמור את הבחירה בדפדפן.');
+          }
+        }
+      })
+      .catch((membershipError) => {
+        if (isCancelled) {
+          return;
+        }
+
+        console.error('Failed to load clinic memberships:', membershipError);
+        setClinics([]);
+        setActiveClinicId('');
+        setError(membershipError.message);
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingClinics(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [userId]);
+
+  const selectClinic = useCallback((clinicId) => {
+    if (!clinics.some((clinic) => clinic.id === clinicId)) {
+      return;
+    }
+
+    clearResourceCache();
+    setActiveClinicId(clinicId);
+
+    try {
+      window.localStorage.setItem(
+        `${ACTIVE_CLINIC_STORAGE_KEY}:${userId}`,
+        clinicId,
+      );
+    } catch (storageError) {
+      console.error('Failed to persist the active clinic:', storageError);
+      setError('המרפאה הוחלפה, אך לא ניתן לשמור את הבחירה בדפדפן.');
+    }
+  }, [clinics, userId]);
+
+  useEffect(() => {
+    if (!googleAccess) {
       return undefined;
     }
 
@@ -75,7 +175,7 @@ export function useAuth() {
       });
 
     return () => controller.abort();
-  }, [googleAccess, user?.id]);
+  }, [googleAccess]);
 
   const loginWithGoogle = useCallback(async () => {
     setError('');
@@ -110,6 +210,10 @@ export function useAuth() {
     isLoading,
     isSubmitting,
     error,
+    clinics,
+    activeClinicId,
+    isLoadingClinics,
+    selectClinic,
     loginWithGoogle,
     logout,
   };
