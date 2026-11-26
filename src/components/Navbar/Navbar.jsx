@@ -14,6 +14,9 @@ export default function Navbar({
   isAuthLoading,
   isSubmitting,
   authError,
+  clinics,
+  activeClinicId,
+  onClinicChange,
   onLogin,
   onLogout,
 }) {
@@ -29,6 +32,22 @@ export default function Navbar({
         <UserSection>
           {user ? (
             <>
+              {clinics.length > 1 && (
+                <label dir="rtl">
+                  <span style={{ marginInlineEnd: '0.5rem' }}>מרפאה:</span>
+                  <select
+                    aria-label="בחירת מרפאה פעילה"
+                    value={activeClinicId}
+                    onChange={(event) => onClinicChange(event.target.value)}
+                  >
+                    {clinics.map((clinic) => (
+                      <option key={clinic.id} value={clinic.id}>
+                        {clinic.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <UserProfile user={user} googleIdentity={googleIdentity} />
               <LogoutButton disabled={isSubmitting} onLogout={onLogout} />
             </>
